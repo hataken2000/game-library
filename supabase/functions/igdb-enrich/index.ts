@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
       .select('id, title, slug', { count: 'exact' })
       .like('slug', 'steam-%')
       .is('igdb_id', null)
-      .order('title')
+      .order('slug')
       .range(offset, offset + limit - 1)
 
     if (!games || games.length === 0) {
@@ -62,13 +62,22 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'text/plain',
       },
-      body: `fields game,uid; where category=1 & uid=(${appids.map(id => `"${id}"`).join(',')}); limit 500;`,
+      body: `fields game,uid; where category=1 & uid=(${appids.join(',')}); limit 500;`,
     })
-    const externalGames: Array<{ game: number; uid: string }> = await externalRes.json()
+    const externalRaw = await externalRes.text()
+
+    if (!externalRes.ok) {
+      return new Response(
+        JSON.stringify({ error: `IGDB external_games failed: status=${externalRes.status} body=${externalRaw}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const externalGames: Array<{ game: number; uid: string }> = JSON.parse(externalRaw)
 
     if (!Array.isArray(externalGames) || externalGames.length === 0) {
       return new Response(
-        JSON.stringify({ processed: 0, total: count ?? 0, hasMore: (offset + limit) < (count ?? 0), debug: externalGames }),
+        JSON.stringify({ processed: 0, total: count ?? 0, hasMore: (offset + limit) < (count ?? 0), debug: `status=${externalRes.status} body=${externalRaw.slice(0, 200)}` }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
