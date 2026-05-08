@@ -211,7 +211,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold">Game Library</h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-xl font-bold">Game Library</h1>
+          <span className="text-gray-500 text-xs">{__BUILD_VERSION__}</span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
