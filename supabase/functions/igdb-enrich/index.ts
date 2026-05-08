@@ -55,97 +55,56 @@ Deno.serve(async (req) => {
 
     const appids = games.map((g) => g.slug.replace('steam-', ''))
 
-    const externalRes = await fetch('https://api.igdb.com/v4/external_games', {
-      method: 'POST',
-      headers: {
-        'Client-ID': twitchClientId,
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'text/plain',
-      },
-      body: `fields game,uid; where category=1 & uid=(${appids.join(',')}); limit 500;`,
-    })
-    const externalRaw = await externalRes.text()
-
-    if (!externalRes.ok) {
-      return new Response(
-        JSON.stringify({ error: `IGDB external_games failed: status=${externalRes.status} body=${externalRaw}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const externalGames: Array<{ game: number; uid: string }> = JSON.parse(externalRaw)
-
-    if (!Array.isArray(externalGames) || externalGames.length === 0) {
-      return new Response(
-        JSON.stringify({ processed: 0, total: count ?? 0, hasMore: (offset + limit) < (count ?? 0), debug: `status=${externalRes.status} body=${externalRaw.slice(0, 200)}` }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const appidToIgdbId: Record<string, number> = {}
-    for (const eg of externalGames) {
-      appidToIgdbId[eg.uid] = eg.game
-    }
-
-    const igdbIds = [...new Set(externalGames.map((eg) => eg.game))]
-
-    const igdbGamesRes = await fetch('https://api.igdb.com/v4/games', {
-      method: 'POST',
-      headers: {
-        'Client-ID': twitchClientId,
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'text/plain',
-      },
-      body: `fields name,slug,cover.url,genres.name,first_release_date,aggregated_rating; where id=(${igdbIds.join(',')}); limit 500;`,
-    })
-    const igdbGames: Array<{
-      id: number
-      name: string
-      slug: string
-      cover?: { url: string }
-      genres?: Array<{ name: string }>
-      first_release_date?: number
-      aggregated_rating?: number
-    }> = await igdbGamesRes.json()
-
-    const igdbGameMap: Record<number, typeof igdbGames[number]> = {}
-    for (const ig of igdbGames) {
-      igdbGameMap[ig.id] = ig
-    }
-
     let processed = 0
     for (const game of games) {
-      const appid = game.slug.replace('steam-', '')
-      const igdbId = appidToIgdbId[appid]
-      if (!igdbId) continue
+      const safeTitle = game.title.replace(/"/g, '\\"')
+      const searchRes = await fetch('https://api.igdb.com/v4/games', {
+        method: 'POST',
+        headers: {
+          'Client-ID': twitchClientId,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'text/plain',
+        },
+        body: `search "${safeTitle}"; fields name,slug,cover.url,genres.name,first_release_date,aggregated_rating; limit 1;`,
+      })
 
-      const igdbGame = igdbGameMap[igdbId]
-      if (!igdbGame) continue
+      if (!searchRes.ok) continue
 
-      const coverUrl = igdbGame.cover?.url
-        ? 'https:' + igdbGame.cover.url.replace('t_thumb', 't_cover_big')
-        : null
-      const genres = igdbGame.genres?.map((g) => g.name) ?? null
-      const releaseYear = igdbGame.first_release_date
-        ? new Date(igdbGame.first_release_date * 1000).getFullYear()
-        : null
-      const metacriticScore = igdbGame.aggregated_rating != null
-        ? Math.round(igdbGame.aggregated_rating)
+      const results: Array<{
+        id: number
+        name: string
+        slug: string
+        cover?: { url: string }
+        genres?: Array<{ name: string }>
+        first_release_date?: number
+        aggregated_rating?: number
+      }> = await searchRes.json()
+
+      if (!Array.isArray(results) || results.length === 0) continue
+
+      const ig = results[0]
+      const coverUrl = ig.cover?.url
+        ? 'https:' + ig.cover.url.replace('t_thumb', 't_cover_big')
         : null
 
       await supabase
         .from('games')
         .update({
-          igdb_id: igdbId,
+          igdb_id: ig.id,
           cover_url: coverUrl,
-          genres,
-          release_year: releaseYear,
-          metacritic_score: metacriticScore,
+          genres: ig.genres?.map((g) => g.name) ?? null,
+          release_year: ig.first_release_date
+            ? new Date(ig.first_release_date * 1000).getFullYear()
+            : null,
+          metacritic_score: ig.aggregated_rating != null
+            ? Math.round(ig.aggregated_rating)
+            : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', game.id)
 
       processed++
+      await new Promise((r) => setTimeout(r, 260))
     }
 
     return new Response(
