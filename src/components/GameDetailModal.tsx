@@ -1,13 +1,25 @@
+import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 type Game = Database['public']['Tables']['games']['Row']
 type PlatformEntry = Database['public']['Tables']['platform_entries']['Row']
+type Tag = Database['public']['Tables']['tags']['Row']
 
-type GameWithPlatforms = Game & { platform_entries: PlatformEntry[] }
+type GameTag = {
+  tag_id: string
+  tags: { id: string; name: string; color: string }
+}
+
+type GameWithPlatformsAndTags = Game & {
+  platform_entries: PlatformEntry[]
+  game_tags: GameTag[]
+}
 
 interface GameDetailModalProps {
-  game: GameWithPlatforms | null
+  game: GameWithPlatformsAndTags | null
   onClose: () => void
+  onTagsChanged: () => void
 }
 
 function scoreColor(score: number): string {
@@ -16,10 +28,51 @@ function scoreColor(score: number): string {
   return 'text-red-400'
 }
 
-export function GameDetailModal({ game, onClose }: GameDetailModalProps) {
+export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModalProps) {
+  const [tagInput, setTagInput] = useState('')
+  const [allTags, setAllTags] = useState<Tag[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!game) return
+    supabase.from('tags').select('*').order('name').then(({ data }) => {
+      setAllTags(data ?? [])
+    })
+    setTagInput('')
+  }, [game?.id])
+
   if (!game) return null
 
   const steamEntry = game.platform_entries.find((p) => p.platform === 'steam')
+  const currentTagIds = new Set(game.game_tags.map((gt) => gt.tag_id))
+
+  const suggestions = allTags.filter(
+    (t) => !currentTagIds.has(t.id) && t.name.toLowerCase().includes(tagInput.toLowerCase()) && tagInput.length > 0
+  )
+
+  async function addTag(name: string) {
+    if (!game) return
+    const trimmed = name.trim()
+    if (!trimmed) return
+
+    const { data: tag } = await supabase
+      .from('tags')
+      .upsert({ name: trimmed, color: '#6366f1' }, { onConflict: 'name' })
+      .select('id')
+      .single()
+
+    if (!tag) return
+
+    await supabase.from('game_tags').upsert({ game_id: game.id, tag_id: tag.id })
+    setTagInput('')
+    onTagsChanged()
+  }
+
+  async function removeTag(tagId: string) {
+    if (!game) return
+    await supabase.from('game_tags').delete().eq('game_id', game.id).eq('tag_id', tagId)
+    onTagsChanged()
+  }
 
   return (
     <div
@@ -59,10 +112,7 @@ export function GameDetailModal({ game, onClose }: GameDetailModalProps) {
             {game.genres && game.genres.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {game.genres.map((genre) => (
-                  <span
-                    key={genre}
-                    className="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded"
-                  >
+                  <span key={genre} className="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">
                     {genre}
                   </span>
                 ))}
@@ -98,10 +148,7 @@ export function GameDetailModal({ game, onClose }: GameDetailModalProps) {
             <p className="text-gray-500 text-xs mb-2">所持プラットフォーム</p>
             <div className="flex flex-wrap gap-2">
               {game.platform_entries.map((p) => (
-                <span
-                  key={p.id}
-                  className="bg-gray-700 text-gray-200 text-sm px-3 py-1 rounded"
-                >
+                <span key={p.id} className="bg-gray-700 text-gray-200 text-sm px-3 py-1 rounded">
                   {p.platform}
                 </span>
               ))}
@@ -124,6 +171,59 @@ export function GameDetailModal({ game, onClose }: GameDetailModalProps) {
               )}
             </div>
           )}
+
+          {/* タグ */}
+          <div>
+            <p className="text-gray-500 text-xs mb-2">タグ</p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {game.game_tags.map((gt) => (
+                <span
+                  key={gt.tag_id}
+                  className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white"
+                  style={{ backgroundColor: gt.tags.color }}
+                >
+                  {gt.tags.name}
+                  <button
+                    onClick={() => removeTag(gt.tag_id)}
+                    className="hover:opacity-70 leading-none"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addTag(tagInput)
+                }}
+                placeholder="タグを追加（Enter）"
+                className="w-full bg-gray-700 text-gray-200 text-sm px-3 py-1.5 rounded outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              {suggestions.length > 0 && (
+                <div className="absolute top-full mt-1 left-0 right-0 bg-gray-700 rounded shadow-lg z-10 max-h-32 overflow-y-auto">
+                  {suggestions.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => addTag(t.name)}
+                      className="w-full text-left px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-600 flex items-center gap-2"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: t.color }}
+                      />
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
