@@ -111,7 +111,14 @@ export default function App() {
         const { data, error } = await supabase.functions.invoke('igdb-enrich', {
           body: { twitchClientId, twitchClientSecret, offset, limit },
         })
-        if (error) break
+        if (error) {
+          alert(`IGDBエラー: ${error.message}`)
+          break
+        }
+        if (data?.error) {
+          alert(`IGDBエラー: ${data.error}`)
+          break
+        }
 
         const result = data as { processed: number; total: number; hasMore: boolean }
         setEnrichProgress({ processed: offset + result.processed, total: result.total })
