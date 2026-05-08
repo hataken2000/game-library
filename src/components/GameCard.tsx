@@ -6,6 +6,7 @@ type PlatformEntry = Database['public']['Tables']['platform_entries']['Row']
 interface GameCardProps {
   game: Game
   platforms: PlatformEntry[]
+  onClick: () => void
 }
 
 function scoreColor(score: number): string {
@@ -14,11 +15,14 @@ function scoreColor(score: number): string {
   return 'text-red-400'
 }
 
-export function GameCard({ game, platforms }: GameCardProps) {
+export function GameCard({ game, platforms, onClick }: GameCardProps) {
   const steamEntry = platforms.find((p) => p.platform === 'steam')
 
   return (
-    <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col">
+    <div
+      className="bg-gray-800 rounded-lg overflow-hidden flex flex-col cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+      onClick={onClick}
+    >
       {game.cover_url ? (
         <img
           src={game.cover_url}

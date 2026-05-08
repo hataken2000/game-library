@@ -4,12 +4,18 @@ import { syncSteamLibrary } from './lib/steam'
 import { GameCard } from './components/GameCard'
 import { FilterBar } from './components/FilterBar'
 import { SettingsModal } from './components/SettingsModal'
+import { GameDetailModal } from './components/GameDetailModal'
 import type { Database } from './types/database'
 
 type Game = Database['public']['Tables']['games']['Row']
 type PlatformEntry = Database['public']['Tables']['platform_entries']['Row']
 
 type GameWithPlatforms = Game & { platform_entries: PlatformEntry[] }
+
+interface EnrichProgress {
+  processed: number
+  total: number
+}
 
 export default function App() {
   const [games, setGames] = useState<GameWithPlatforms[]>([])
@@ -19,6 +25,9 @@ export default function App() {
   const [sortBy, setSortBy] = useState('title')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isEnriching, setIsEnriching] = useState(false)
+  const [enrichProgress, setEnrichProgress] = useState<EnrichProgress | null>(null)
+  const [selectedGame, setSelectedGame] = useState<GameWithPlatforms | null>(null)
 
   async function fetchGames() {
     setLoading(true)
@@ -42,6 +51,66 @@ export default function App() {
     } finally {
       setIsSyncing(false)
       setSettingsOpen(false)
+    }
+  }
+
+  async function handleIgdbEnrich({ twitchClientId, twitchClientSecret }: { twitchClientId: string; twitchClientSecret: string }) {
+    setIsEnriching(true)
+    setEnrichProgress(null)
+
+    try {
+      let offset = 0
+      const limit = 50
+      let hasMore = true
+
+      while (hasMore) {
+        const { data, error } = await supabase.functions.invoke('igdb-enrich', {
+          body: { twitchClientId, twitchClientSecret, offset, limit },
+        })
+
+        if (error) break
+
+        const result = data as { processed: number; total: number; hasMore: boolean }
+        setEnrichProgress({ processed: offset + result.processed, total: result.total })
+        hasMore = result.hasMore
+        offset += limit
+
+        if (hasMore) await new Promise((r) => setTimeout(r, 300))
+      }
+
+      await fetchGames()
+    } finally {
+      setIsEnriching(false)
+      setEnrichProgress(null)
+    }
+  }
+
+  async function handleOpencriticEnrich({ rapidApiKey }: { rapidApiKey: string }) {
+    setIsEnriching(true)
+    setEnrichProgress(null)
+
+    try {
+      let offset = 0
+      const limit = 5
+      let hasMore = true
+
+      while (hasMore) {
+        const { data, error } = await supabase.functions.invoke('opencritic-enrich', {
+          body: { rapidApiKey, offset, limit },
+        })
+
+        if (error) break
+
+        const result = data as { processed: number; total: number; hasMore: boolean }
+        setEnrichProgress({ processed: offset + result.processed, total: result.total })
+        hasMore = result.hasMore
+        offset += limit
+      }
+
+      await fetchGames()
+    } finally {
+      setIsEnriching(false)
+      setEnrichProgress(null)
     }
   }
 
@@ -111,12 +180,13 @@ export default function App() {
               : '該当するゲームが見つかりません'}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((game) => (
               <GameCard
                 key={game.id}
                 game={game}
                 platforms={game.platform_entries}
+                onClick={() => setSelectedGame(game)}
               />
             ))}
           </div>
@@ -128,6 +198,15 @@ export default function App() {
         onClose={() => setSettingsOpen(false)}
         onSyncStart={handleSync}
         isSyncing={isSyncing}
+        onIgdbEnrich={handleIgdbEnrich}
+        onOpencriticEnrich={handleOpencriticEnrich}
+        isEnriching={isEnriching}
+        enrichProgress={enrichProgress}
+      />
+
+      <GameDetailModal
+        game={selectedGame}
+        onClose={() => setSelectedGame(null)}
       />
     </div>
   )
