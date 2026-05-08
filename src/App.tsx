@@ -102,8 +102,11 @@ export default function App() {
     setIsEnriching(true)
     setEnrichProgress(null)
 
+    const STORAGE_KEY = 'igdb_enrich_offset'
+    const savedOffset = parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10)
+
     try {
-      let offset = 0
+      let offset = savedOffset
       const limit = 50
       let hasMore = true
 
@@ -121,13 +124,15 @@ export default function App() {
         }
 
         const result = data as { processed: number; total: number; hasMore: boolean }
-        setEnrichProgress({ processed: offset + result.processed, total: result.total })
-        hasMore = result.hasMore
         offset += limit
+        localStorage.setItem(STORAGE_KEY, String(offset))
+        setEnrichProgress({ processed: offset, total: result.total })
+        hasMore = result.hasMore
 
         if (hasMore) await new Promise((r) => setTimeout(r, 300))
       }
 
+      localStorage.removeItem(STORAGE_KEY)
       await fetchGames()
     } finally {
       setIsEnriching(false)
