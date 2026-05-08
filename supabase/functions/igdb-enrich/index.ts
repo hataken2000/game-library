@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'text/plain',
       },
-      body: `fields game,uid; where category=1 & uid=(${appids.join(',')}); limit 500;`,
+      body: `fields game,uid; where category=1 & uid=(${appids.map(id => `"${id}"`).join(',')}); limit 500;`,
     })
     const externalGames: Array<{ game: number; uid: string }> = await externalRes.json()
 
