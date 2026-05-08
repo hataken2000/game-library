@@ -24,7 +24,14 @@ Deno.serve(async (req) => {
       `https://id.twitch.tv/oauth2/token?client_id=${twitchClientId}&client_secret=${twitchClientSecret}&grant_type=client_credentials`,
       { method: 'POST' }
     )
-    const { access_token: accessToken } = await tokenRes.json()
+    const tokenData = await tokenRes.json()
+    if (!tokenRes.ok || !tokenData.access_token) {
+      return new Response(
+        JSON.stringify({ error: `Twitch auth failed: ${JSON.stringify(tokenData)}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const accessToken = tokenData.access_token
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -61,7 +68,7 @@ Deno.serve(async (req) => {
 
     if (!Array.isArray(externalGames) || externalGames.length === 0) {
       return new Response(
-        JSON.stringify({ processed: 0, total: count ?? 0, hasMore: (offset + limit) < (count ?? 0) }),
+        JSON.stringify({ processed: 0, total: count ?? 0, hasMore: (offset + limit) < (count ?? 0), debug: externalGames }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
