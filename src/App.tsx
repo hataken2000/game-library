@@ -124,6 +124,7 @@ export default function App() {
         }
 
         const result = data as { processed: number; total: number; hasMore: boolean }
+        if (offset === savedOffset) alert(`DEBUG: ${JSON.stringify(result)}`)
         offset += limit
         localStorage.setItem(STORAGE_KEY, String(offset))
         setEnrichProgress({ processed: offset, total: result.total })
