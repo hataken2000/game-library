@@ -144,7 +144,8 @@ export default function App() {
           body: { twitchClientId, twitchClientSecret, offset, limit, refreshTitleJa },
         })
         if (error) {
-          alert(`IGDBエラー: ${error.message}`)
+          const detail = await (error as any).context?.text?.().catch(() => null)
+          alert(`IGDBエラー: ${error.message}\n${detail ?? ''}`)
           break
         }
         if (data?.error) {
