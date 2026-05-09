@@ -7,6 +7,7 @@ interface GameListRowProps {
   game: Game
   platforms: PlatformEntry[]
   onClick: () => void
+  displayTitle: string
 }
 
 function scoreColor(score: number): string {
@@ -15,7 +16,7 @@ function scoreColor(score: number): string {
   return 'text-red-400'
 }
 
-export function GameListRow({ game, platforms, onClick }: GameListRowProps) {
+export function GameListRow({ game, platforms, onClick, displayTitle }: GameListRowProps) {
   const steamEntry = platforms.find((p) => p.platform === 'steam')
 
   return (
@@ -34,7 +35,7 @@ export function GameListRow({ game, platforms, onClick }: GameListRowProps) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-medium truncate">{game.title}</p>
+        <p className="text-white text-sm font-medium truncate">{displayTitle}</p>
         <div className="flex items-center gap-2 mt-0.5">
           {platforms.map((p) => (
             <span key={p.id} className="bg-gray-700 text-gray-400 text-xs px-1.5 py-0.5 rounded">

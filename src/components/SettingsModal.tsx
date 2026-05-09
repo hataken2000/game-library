@@ -10,10 +10,12 @@ interface SettingsModalProps {
   onClose: () => void
   onSyncStart: () => void
   isSyncing: boolean
-  onIgdbEnrich: (params: { twitchClientId: string; twitchClientSecret: string }) => void
+  onIgdbEnrich: (params: { twitchClientId: string; twitchClientSecret: string; refreshTitleJa?: boolean }) => void
   onOpencriticEnrich: (params: { rapidApiKey: string }) => void
   isEnriching: boolean
   enrichProgress: EnrichProgress | null
+  showJaTitle: boolean
+  onJaTitleToggle: () => void
 }
 
 export function SettingsModal({
@@ -25,6 +27,8 @@ export function SettingsModal({
   onOpencriticEnrich,
   isEnriching,
   enrichProgress,
+  showJaTitle,
+  onJaTitleToggle,
 }: SettingsModalProps) {
   const [twitchClientId, setTwitchClientId] = useState('')
   const [twitchClientSecret, setTwitchClientSecret] = useState('')
@@ -138,6 +142,26 @@ export function SettingsModal({
                   'メタデータ取得（IGDB）'
                 )}
               </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem('twitch_client_id', twitchClientId)
+                  localStorage.setItem('twitch_client_secret', twitchClientSecret)
+                  onIgdbEnrich({ twitchClientId, twitchClientSecret, refreshTitleJa: true })
+                }}
+                disabled={isEnriching || isSyncing || !twitchClientId || !twitchClientSecret}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-900 disabled:text-indigo-400 text-white py-2 rounded text-sm font-medium flex items-center justify-center gap-2"
+              >
+                {isEnriching ? <SpinIcon /> : '日本語タイトル再取得（IGDB）'}
+              </button>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showJaTitle}
+                  onChange={onJaTitleToggle}
+                  className="w-4 h-4 accent-indigo-500"
+                />
+                <span className="text-gray-300 text-sm">日本語タイトルで表示</span>
+              </label>
             </div>
           </section>
 

@@ -46,6 +46,20 @@ export default function App() {
   const [isEnriching, setIsEnriching] = useState(false)
   const [enrichProgress, setEnrichProgress] = useState<EnrichProgress | null>(null)
   const [selectedGame, setSelectedGame] = useState<GameWithPlatformsAndTags | null>(null)
+  const [showJaTitle, setShowJaTitle] = useState(() =>
+    localStorage.getItem('showJaTitle') === 'true'
+  )
+
+  function displayTitle(game: GameWithPlatformsAndTags) {
+    return showJaTitle && game.title_ja ? game.title_ja : game.title
+  }
+
+  function handleJaTitleToggle() {
+    setShowJaTitle((prev) => {
+      localStorage.setItem('showJaTitle', String(!prev))
+      return !prev
+    })
+  }
 
   async function fetchGames() {
     setLoading(true)
@@ -108,14 +122,16 @@ export default function App() {
   async function handleIgdbEnrich({
     twitchClientId,
     twitchClientSecret,
+    refreshTitleJa = false,
   }: {
     twitchClientId: string
     twitchClientSecret: string
+    refreshTitleJa?: boolean
   }) {
     setIsEnriching(true)
     setEnrichProgress(null)
 
-    const STORAGE_KEY = 'igdb_enrich_offset'
+    const STORAGE_KEY = refreshTitleJa ? 'igdb_ja_offset' : 'igdb_enrich_offset'
     const savedOffset = parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10)
 
     try {
@@ -125,7 +141,7 @@ export default function App() {
 
       while (hasMore) {
         const { data, error } = await supabase.functions.invoke('igdb-enrich', {
-          body: { twitchClientId, twitchClientSecret, offset, limit },
+          body: { twitchClientId, twitchClientSecret, offset, limit, refreshTitleJa },
         })
         if (error) {
           alert(`IGDBエラー: ${error.message}`)
@@ -192,7 +208,9 @@ export default function App() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      list = list.filter((g) => g.title.toLowerCase().includes(q))
+      list = list.filter((g) =>
+        g.title.toLowerCase().includes(q) || (g.title_ja ?? '').includes(q)
+      )
     }
 
     if (selectedPlatform !== 'All') {
@@ -224,9 +242,9 @@ export default function App() {
         const bHours = b.platform_entries.find((e) => e.platform === 'steam')?.playtime_hours ?? -1
         return bHours - aHours
       }
-      return a.title.localeCompare(b.title)
+      return displayTitle(a).localeCompare(displayTitle(b), 'ja')
     })
-  }, [games, searchQuery, selectedPlatform, selectedTags, selectedStatus, sortBy])
+  }, [games, searchQuery, selectedPlatform, selectedTags, selectedStatus, sortBy, showJaTitle])
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -310,6 +328,7 @@ export default function App() {
                 game={game}
                 platforms={game.platform_entries}
                 onClick={() => setSelectedGame(game)}
+                displayTitle={displayTitle(game)}
               />
             ))}
           </div>
@@ -321,6 +340,7 @@ export default function App() {
                 game={game}
                 platforms={game.platform_entries}
                 onClick={() => setSelectedGame(game)}
+                displayTitle={displayTitle(game)}
               />
             ))}
           </div>
@@ -336,6 +356,8 @@ export default function App() {
         onOpencriticEnrich={handleOpencriticEnrich}
         isEnriching={isEnriching}
         enrichProgress={enrichProgress}
+        showJaTitle={showJaTitle}
+        onJaTitleToggle={handleJaTitleToggle}
       />
 
       <ImportModal
@@ -349,6 +371,8 @@ export default function App() {
         onClose={() => setSelectedGame(null)}
         onTagsChanged={handleTagsChanged}
         onStatusChanged={fetchGames}
+        displayTitle={selectedGame ? displayTitle(selectedGame) : ''}
+        showJaTitle={showJaTitle}
       />
 
       <StatsModal

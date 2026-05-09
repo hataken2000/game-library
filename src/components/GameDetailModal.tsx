@@ -21,6 +21,8 @@ interface GameDetailModalProps {
   onClose: () => void
   onTagsChanged: () => void
   onStatusChanged: () => void
+  displayTitle: string
+  showJaTitle: boolean
 }
 
 type Status = 'unplayed' | 'playing' | 'completed' | 'abandoned'
@@ -38,7 +40,7 @@ function scoreColor(score: number): string {
   return 'text-red-400'
 }
 
-export function GameDetailModal({ game, onClose, onTagsChanged, onStatusChanged }: GameDetailModalProps) {
+export function GameDetailModal({ game, onClose, onTagsChanged, onStatusChanged, displayTitle, showJaTitle }: GameDetailModalProps) {
   const [tagInput, setTagInput] = useState('')
   const [allTags, setAllTags] = useState<Tag[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -119,7 +121,10 @@ export function GameDetailModal({ game, onClose, onTagsChanged, onStatusChanged 
         <div className="p-5 overflow-y-auto flex flex-col gap-4">
           {/* タイトル・ジャンル */}
           <div>
-            <h2 className="text-white text-xl font-bold">{game.title}</h2>
+            <h2 className="text-white text-xl font-bold">{displayTitle}</h2>
+            {showJaTitle && game.title_ja && (
+              <p className="text-gray-500 text-sm">{game.title}</p>
+            )}
             {game.release_year && (
               <p className="text-gray-400 text-sm mt-0.5">{game.release_year}</p>
             )}

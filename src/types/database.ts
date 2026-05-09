@@ -16,6 +16,7 @@ export interface Database {
           opencritic_score: number | null
           opencritic_percent_recommended: number | null
           status: string | null
+          title_ja: string | null
           created_at: string
           updated_at: string
         }
@@ -31,6 +32,7 @@ export interface Database {
           opencritic_score?: number | null
           opencritic_percent_recommended?: number | null
           status?: string | null
+          title_ja?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -46,6 +48,7 @@ export interface Database {
           opencritic_score?: number | null
           opencritic_percent_recommended?: number | null
           status?: string | null
+          title_ja?: string | null
           created_at?: string
           updated_at?: string
         }

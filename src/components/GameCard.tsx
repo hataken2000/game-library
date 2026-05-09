@@ -7,6 +7,7 @@ interface GameCardProps {
   game: Game
   platforms: PlatformEntry[]
   onClick: () => void
+  displayTitle: string
 }
 
 function scoreColor(score: number): string {
@@ -15,7 +16,7 @@ function scoreColor(score: number): string {
   return 'text-red-400'
 }
 
-export function GameCard({ game, platforms, onClick }: GameCardProps) {
+export function GameCard({ game, platforms, onClick, displayTitle }: GameCardProps) {
   const steamEntry = platforms.find((p) => p.platform === 'steam')
 
   return (
@@ -37,7 +38,7 @@ export function GameCard({ game, platforms, onClick }: GameCardProps) {
 
       <div className="p-3 flex flex-col gap-2 flex-1">
         <h3 className="text-white font-semibold text-sm leading-tight line-clamp-2">
-          {game.title}
+          {displayTitle}
         </h3>
 
         <div className="flex flex-wrap gap-1">
