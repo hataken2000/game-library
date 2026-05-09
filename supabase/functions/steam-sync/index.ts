@@ -46,14 +46,14 @@ Deno.serve(async (req) => {
   for (let i = 0; i < newGames.length; i += CHUNK) {
     const chunk = newGames.slice(i, i + CHUNK)
 
-    // gamesテーブルにバルクinsert（slugにappidを仮セット）
+    // gamesテーブルにバルクupsert（slug重複時は無視）
     const { data: insertedGames } = await supabase
       .from('games')
-      .insert(chunk.map((g) => ({
+      .upsert(chunk.map((g) => ({
         title: g.name,
         slug: `steam-${g.appid}`,
         genres: [],
-      })))
+      })), { onConflict: 'slug', ignoreDuplicates: true })
       .select('id, slug')
 
     if (!insertedGames?.length) continue
