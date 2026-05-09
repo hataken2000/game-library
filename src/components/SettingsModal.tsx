@@ -151,7 +151,14 @@ export function SettingsModal({
                 disabled={isEnriching || isSyncing || !twitchClientId || !twitchClientSecret}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-900 disabled:text-indigo-400 text-white py-2 rounded text-sm font-medium flex items-center justify-center gap-2"
               >
-                {isEnriching ? <SpinIcon /> : '日本語タイトル再取得（IGDB）'}
+                {isEnriching ? (
+                  <>
+                    <SpinIcon />
+                    {enrichProgress
+                      ? `日本語取得中... ${enrichProgress.processed}/${enrichProgress.total}件`
+                      : '日本語取得中...'}
+                  </>
+                ) : '日本語タイトル再取得（IGDB）'}
               </button>
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
