@@ -39,19 +39,30 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    let query = supabase
-      .from('games')
-      .select('id, title, slug', { count: 'exact' })
-      .order('slug')
-      .range(offset, offset + limit - 1)
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let games: any[] | null = null
+    let count: number | null = null
     if (refreshTitleJa) {
-      query = query.not('igdb_id', 'is', null).is('title_ja', null)
+      const res = await supabase
+        .from('games')
+        .select('id, title, slug', { count: 'exact' })
+        .not('igdb_id', 'is', null)
+        .is('title_ja', null)
+        .order('slug')
+        .range(offset, offset + limit - 1)
+      games = res.data
+      count = res.count
     } else {
-      query = query.like('slug', 'steam-%').is('igdb_id', null)
+      const res = await supabase
+        .from('games')
+        .select('id, title, slug', { count: 'exact' })
+        .like('slug', 'steam-%')
+        .is('igdb_id', null)
+        .order('slug')
+        .range(offset, offset + limit - 1)
+      games = res.data
+      count = res.count
     }
-
-    const { data: games, count } = await query
 
     if (!games || games.length === 0) {
       return new Response(
