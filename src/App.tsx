@@ -7,6 +7,7 @@ import { FilterBar } from './components/FilterBar'
 import { SettingsModal } from './components/SettingsModal'
 import { GameDetailModal } from './components/GameDetailModal'
 import { ImportModal } from './components/ImportModal'
+import { StatsModal } from './components/StatsModal'
 import type { Database } from './types/database'
 
 type Game = Database['public']['Tables']['games']['Row']
@@ -37,8 +38,10 @@ export default function App() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('title')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [selectedStatus, setSelectedStatus] = useState('All')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [statsOpen, setStatsOpen] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
   const [enrichProgress, setEnrichProgress] = useState<EnrichProgress | null>(null)
@@ -195,6 +198,13 @@ export default function App() {
       )
     }
 
+    if (selectedStatus !== 'All') {
+      const statusVal = selectedStatus === 'unplayed' ? null : selectedStatus
+      list = list.filter((g) =>
+        statusVal === null ? (g.status === null || g.status === 'unplayed') : g.status === statusVal
+      )
+    }
+
     return [...list].sort((a, b) => {
       if (sortBy === 'metacritic') {
         return (b.metacritic_score ?? -1) - (a.metacritic_score ?? -1)
@@ -206,7 +216,7 @@ export default function App() {
       }
       return a.title.localeCompare(b.title)
     })
-  }, [games, searchQuery, selectedPlatform, selectedTags, sortBy])
+  }, [games, searchQuery, selectedPlatform, selectedTags, selectedStatus, sortBy])
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -230,6 +240,12 @@ export default function App() {
                 <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
             )}
+          </button>
+          <button
+            onClick={() => setStatsOpen(true)}
+            className="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded"
+          >
+            統計
           </button>
           <button
             onClick={() => setImportOpen(true)}
@@ -258,6 +274,8 @@ export default function App() {
             tags={allTags}
             selectedTags={selectedTags}
             onTagToggle={handleTagToggle}
+            selectedStatus={selectedStatus}
+            onStatusChange={setSelectedStatus}
           />
         </div>
 
@@ -320,6 +338,13 @@ export default function App() {
         game={selectedGame}
         onClose={() => setSelectedGame(null)}
         onTagsChanged={handleTagsChanged}
+        onStatusChanged={fetchGames}
+      />
+
+      <StatsModal
+        isOpen={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        games={games}
       />
     </div>
   )

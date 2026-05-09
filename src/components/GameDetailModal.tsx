@@ -20,7 +20,17 @@ interface GameDetailModalProps {
   game: GameWithPlatformsAndTags | null
   onClose: () => void
   onTagsChanged: () => void
+  onStatusChanged: () => void
 }
+
+type Status = 'unplayed' | 'playing' | 'completed' | 'abandoned'
+
+const STATUS_OPTIONS: { value: Status; label: string; color: string; active: string }[] = [
+  { value: 'unplayed', label: '未プレイ', color: 'text-gray-400 border-gray-600', active: 'bg-gray-600 border-gray-500 text-white' },
+  { value: 'playing', label: 'プレイ中', color: 'text-blue-400 border-blue-800', active: 'bg-blue-600 border-blue-500 text-white' },
+  { value: 'completed', label: 'クリア済み', color: 'text-green-400 border-green-800', active: 'bg-green-600 border-green-500 text-white' },
+  { value: 'abandoned', label: '断念', color: 'text-red-400 border-red-800', active: 'bg-red-600 border-red-500 text-white' },
+]
 
 function scoreColor(score: number): string {
   if (score >= 75) return 'text-green-400'
@@ -28,7 +38,7 @@ function scoreColor(score: number): string {
   return 'text-red-400'
 }
 
-export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModalProps) {
+export function GameDetailModal({ game, onClose, onTagsChanged, onStatusChanged }: GameDetailModalProps) {
   const [tagInput, setTagInput] = useState('')
   const [allTags, setAllTags] = useState<Tag[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,10 +55,17 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
 
   const steamEntry = game.platform_entries.find((p) => p.platform === 'steam')
   const currentTagIds = new Set(game.game_tags.map((gt) => gt.tag_id))
+  const currentStatus = (game.status ?? 'unplayed') as Status
 
   const suggestions = allTags.filter(
     (t) => !currentTagIds.has(t.id) && t.name.toLowerCase().includes(tagInput.toLowerCase()) && tagInput.length > 0
   )
+
+  async function handleStatusChange(status: Status) {
+    if (!game) return
+    await supabase.from('games').update({ status }).eq('id', game.id)
+    onStatusChanged()
+  }
 
   async function addTag(name: string) {
     if (!game) return
@@ -85,11 +102,7 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
       >
         <div className="relative">
           {game.cover_url ? (
-            <img
-              src={game.cover_url}
-              alt={game.title}
-              className="w-full h-56 object-cover"
-            />
+            <img src={game.cover_url} alt={game.title} className="w-full h-56 object-cover" />
           ) : (
             <div className="w-full h-56 bg-gray-700 flex items-center justify-center">
               <span className="text-gray-500">No Image</span>
@@ -104,6 +117,7 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
         </div>
 
         <div className="p-5 overflow-y-auto flex flex-col gap-4">
+          {/* タイトル・ジャンル */}
           <div>
             <h2 className="text-white text-xl font-bold">{game.title}</h2>
             {game.release_year && (
@@ -120,6 +134,25 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
             )}
           </div>
 
+          {/* ステータス */}
+          <div>
+            <p className="text-gray-500 text-xs mb-2">ステータス</p>
+            <div className="flex gap-2 flex-wrap">
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleStatusChange(opt.value)}
+                  className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+                    currentStatus === opt.value ? opt.active : opt.color + ' hover:border-gray-400'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* スコア */}
           <div className="flex gap-6">
             {game.metacritic_score != null && (
               <div>
@@ -144,6 +177,7 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
             )}
           </div>
 
+          {/* プラットフォーム */}
           <div>
             <p className="text-gray-500 text-xs mb-2">所持プラットフォーム</p>
             <div className="flex flex-wrap gap-2">
@@ -155,6 +189,7 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
             </div>
           </div>
 
+          {/* Steam情報 */}
           {steamEntry && (
             <div className="flex gap-6">
               {steamEntry.playtime_hours != null && (
@@ -183,10 +218,7 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
                   style={{ backgroundColor: gt.tags.color }}
                 >
                   {gt.tags.name}
-                  <button
-                    onClick={() => removeTag(gt.tag_id)}
-                    className="hover:opacity-70 leading-none"
-                  >
+                  <button onClick={() => removeTag(gt.tag_id)} className="hover:opacity-70 leading-none">
                     ×
                   </button>
                 </span>
@@ -199,9 +231,7 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') addTag(tagInput)
-                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') addTag(tagInput) }}
                 placeholder="タグを追加（Enter）"
                 className="w-full bg-gray-700 text-gray-200 text-sm px-3 py-1.5 rounded outline-none focus:ring-1 focus:ring-blue-500"
               />
@@ -213,10 +243,7 @@ export function GameDetailModal({ game, onClose, onTagsChanged }: GameDetailModa
                       onClick={() => addTag(t.name)}
                       className="w-full text-left px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-600 flex items-center gap-2"
                     >
-                      <span
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: t.color }}
-                      />
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
                       {t.name}
                     </button>
                   ))}

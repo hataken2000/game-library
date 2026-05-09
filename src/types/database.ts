@@ -15,6 +15,7 @@ export interface Database {
           metacritic_score: number | null
           opencritic_score: number | null
           opencritic_percent_recommended: number | null
+          status: string | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +30,7 @@ export interface Database {
           metacritic_score?: number | null
           opencritic_score?: number | null
           opencritic_percent_recommended?: number | null
+          status?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -43,6 +45,7 @@ export interface Database {
           metacritic_score?: number | null
           opencritic_score?: number | null
           opencritic_percent_recommended?: number | null
+          status?: string | null
           created_at?: string
           updated_at?: string
         }

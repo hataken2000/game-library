@@ -14,9 +14,18 @@ interface FilterBarProps {
   tags: TagOption[]
   selectedTags: string[]
   onTagToggle: (tagId: string) => void
+  selectedStatus: string
+  onStatusChange: (value: string) => void
 }
 
 const PLATFORMS = ['All', 'Steam', 'Epic', 'GOG', 'Battle.net']
+const STATUS_OPTIONS = [
+  { value: 'All', label: 'すべて' },
+  { value: 'unplayed', label: '未プレイ' },
+  { value: 'playing', label: 'プレイ中' },
+  { value: 'completed', label: 'クリア済み' },
+  { value: 'abandoned', label: '断念' },
+]
 const SORT_OPTIONS = [
   { value: 'title', label: 'タイトル順' },
   { value: 'metacritic', label: 'メタスコア順' },
@@ -33,6 +42,8 @@ export function FilterBar({
   tags,
   selectedTags,
   onTagToggle,
+  selectedStatus,
+  onStatusChange,
 }: FilterBarProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -53,6 +64,18 @@ export function FilterBar({
           {PLATFORMS.map((p) => (
             <option key={p} value={p}>
               {p}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={selectedStatus}
+          onChange={(e) => onStatusChange(e.target.value)}
+          className="bg-gray-800 text-white border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
+        >
+          {STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>
