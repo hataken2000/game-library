@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
 
       const ig = results[0]
       const jaName = ig.alternative_names?.find((n) =>
-        /[぀-ヿ一-鿿]/.test(n.name)
+        /[぀-ゟ゠-ヿ]/.test(n.name)
       )?.name ?? null
 
       if (refreshTitleJa) {
