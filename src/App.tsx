@@ -49,11 +49,21 @@ export default function App() {
 
   async function fetchGames() {
     setLoading(true)
-    const { data } = await supabase
-      .from('games')
-      .select('*, platform_entries(*), game_tags(tag_id, tags(id, name, color))')
-      .order('title')
-    setGames((data as GameWithPlatformsAndTags[]) ?? [])
+    const PAGE = 1000
+    let all: GameWithPlatformsAndTags[] = []
+    let from = 0
+    while (true) {
+      const { data } = await supabase
+        .from('games')
+        .select('*, platform_entries(*), game_tags(tag_id, tags(id, name, color))')
+        .order('title')
+        .range(from, from + PAGE - 1)
+      if (!data || data.length === 0) break
+      all = all.concat(data as GameWithPlatformsAndTags[])
+      if (data.length < PAGE) break
+      from += PAGE
+    }
+    setGames(all)
     setLoading(false)
   }
 
